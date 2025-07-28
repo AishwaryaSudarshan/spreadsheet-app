@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spreadsheet Query</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold mb-4">Spreadsheet AI Query</h1>
+    <input type="file" id="spreadsheet-upload" class="mb-2" />
+    <textarea id="user-query" class="w-full p-2 border mb-2" placeholder="Enter your query"></textarea>
+    <button id="submit-query" class="bg-indigo-600 text-white px-4 py-2 rounded">Submit</button>
+    <div id="response-display" class="mt-4 p-4 bg-gray-100 border rounded whitespace-pre-wrap"></div>
+    <div id="error-message" class="text-red-500 mt-2 hidden"></div>
+  </div>
+  <script>
+    let spreadsheetData = '';
+    const fileInput = document.getElementById('spreadsheet-upload');
+    const queryInput = document.getElementById('user-query');
+    const responseDisplay = document.getElementById('response-display');
+    const errorDiv = document.getElementById('error-message');
+    document.getElementById('submit-query').addEventListener('click', async () => {
+      const userQuery = queryInput.value.trim();
+      if (!spreadsheetData || !userQuery) {
+        errorDiv.textContent = 'Please upload a spreadsheet and enter a query.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+      errorDiv.classList.add('hidden');
+      responseDisplay.textContent = 'Thinking...';
+      const response = await fetch('http://localhost:5001/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvData: spreadsheetData, userQuery })
+      });
+      const result = await response.json();
+      responseDisplay.textContent = result.response || 'No response';
+    });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        spreadsheetData = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheet]);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  </script>
+</body>
+</html>
